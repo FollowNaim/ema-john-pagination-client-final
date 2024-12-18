@@ -17,8 +17,23 @@ const Shop = () => {
   const totalPages = Math.ceil(totalCount / size);
   const [currentPage, setCurrentPage] = useState(0);
 
+  const [cardProducts, setCartProducts] = useState([]);
+
   const handleClick = (page) => {
     setCurrentPage(page);
+  };
+
+  const handcart = async () => {
+    const storedCart = getShoppingCart();
+    const loadedProducts = await fetch("http://localhost:5000/productsByIds", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify([...Object.keys(storedCart)]),
+    });
+    const products = await loadedProducts.json();
+    setCartProducts(products);
   };
 
   useEffect(() => {
@@ -28,6 +43,12 @@ const Shop = () => {
   }, []);
 
   useEffect(() => {
+    handcart();
+  }, []);
+
+  console.log("cardProducts", cardProducts);
+
+  useEffect(() => {
     fetch(`http://localhost:5000/products?page=${currentPage}&size=${size}`)
       .then((res) => res.json())
       .then((data) => setProducts(data));
@@ -35,11 +56,13 @@ const Shop = () => {
 
   useEffect(() => {
     const storedCart = getShoppingCart();
+    console.log("storedCart", storedCart);
+
     const savedCart = [];
     // step 1: get id of the addedProduct
     for (const id in storedCart) {
       // step 2: get product from products state by using id
-      const addedProduct = products.find((product) => product._id === id);
+      const addedProduct = cardProducts.find((product) => product._id === id);
       if (addedProduct) {
         // step 3: add quantity
         const quantity = storedCart[id];
@@ -50,8 +73,14 @@ const Shop = () => {
       // console.log('added Product', addedProduct)
     }
     // step 5: set the cart
+    console.log("saved cart", savedCart);
     setCart(savedCart);
-  }, [products]);
+    console.log("called inside");
+  }, [products, currentPage]);
+
+  console.log("state", cart);
+  console.log("local", currentPage);
+  console.log("products", products);
 
   const handleAddToCart = (product) => {
     // cart.push(product); '
@@ -71,6 +100,7 @@ const Shop = () => {
 
     setCart(newCart);
     addToDb(product._id);
+    handcart();
   };
 
   const handleClearCart = () => {
